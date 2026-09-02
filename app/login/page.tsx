@@ -61,20 +61,6 @@ export default function LoginPage() {
         {/* ====== LEFT COLUMN: BRANDING & CARS ====== */}
         <div className="w-full lg:w-1/2 flex flex-col justify-between space-y-8">
           
-          {/* Pelindo Logo */}
-          <div className="flex flex-col items-start gap-1">
-            <Image
-              src="/image/logo.png"
-              alt="Pelindo Logo Sub Regional Kalimantan"
-              width={340}
-              height={120}
-              priority
-              className="h-14 sm:h-16 w-auto object-contain"
-            />
-            <p className="text-[10px] sm:text-xs font-bold text-slate-600 tracking-[0.18em] uppercase ml-1">
-              SUB REGIONAL KALIMANTAN
-            </p>
-          </div>
 
           {/* Cars Showcase */}
           <div className="relative w-full h-72 sm:h-84 lg:h-96 my-2 flex items-center justify-center">
