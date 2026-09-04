@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '../../../lib/supabaseServer';
+import pool from '../../../lib/db';
 
 // PUT update car by id
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -8,25 +8,42 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json();
     const { name, plate_number, image, type, transmission, fuel, status, display_order } = body;
 
-    const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (plate_number !== undefined) updateData.plate_number = plate_number;
-    if (image !== undefined) updateData.image = image;
-    if (type !== undefined) updateData.type = type;
-    if (transmission !== undefined) updateData.transmission = transmission;
-    if (fuel !== undefined) updateData.fuel = fuel;
-    if (status !== undefined) updateData.status = status;
-    if (display_order !== undefined) updateData.display_order = display_order;
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
 
-    const { data, error } = await supabaseServer
-      .from('cars')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    const addField = (key: string, value: unknown) => {
+      if (value !== undefined) {
+        fields.push(`${key} = $${idx}`);
+        values.push(value);
+        idx++;
+      }
+    };
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ car: data });
+    addField('name', name);
+    addField('plate_number', plate_number);
+    addField('image', image);
+    addField('type', type);
+    addField('transmission', transmission);
+    addField('fuel', fuel);
+    addField('status', status);
+    addField('display_order', display_order);
+
+    if (fields.length === 0) {
+      return NextResponse.json({ error: 'Tidak ada data untuk diupdate' }, { status: 400 });
+    }
+
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE cars SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Mobil tidak ditemukan' }, { status: 404 });
+    }
+
+    return NextResponse.json({ car: result.rows[0] });
   } catch {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
@@ -36,8 +53,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { error } = await supabaseServer.from('cars').delete().eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await pool.query('DELETE FROM cars WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });

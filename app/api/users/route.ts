@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '../../lib/supabaseServer';
+import pool from '../../lib/db';
 
 // GET all users
 export async function GET() {
-  const { data, error } = await supabaseServer
-    .from('users')
-    .select('id, username, name, nip, division, phone, role, status, created_at')
-    .order('created_at', { ascending: false });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ users: data });
+  try {
+    const result = await pool.query(
+      `SELECT id, username, name, nip, division, phone, role, status, created_at
+       FROM users ORDER BY created_at DESC`
+    );
+    return NextResponse.json({ users: result.rows });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 }
 
 // POST create new user
@@ -27,30 +29,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Role tidak valid' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseServer
-      .from('users')
-      .insert([{
+    const result = await pool.query(
+      `INSERT INTO users (username, password_hash, name, nip, division, phone, role, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'Aktif')
+       RETURNING id, username, name, nip, division, phone, role, status, created_at`,
+      [
         username,
         password_hash,
-        name: name || username,
-        nip: nip || '',
-        division: division || '',
-        phone: phone || '',
+        name || username,
+        nip || '',
+        division || '',
+        phone || '',
         role,
-        status: 'Aktif'
-      }])
-      .select('id, username, name, nip, division, phone, role, status, created_at')
-      .single();
+      ]
+    );
 
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 409 });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ user: result.rows[0] }, { status: 201 });
+  } catch (error) {
+    const err = error as { code?: string; message?: string };
+    if (err.code === '23505') {
+      return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 409 });
     }
-
-    return NextResponse.json({ user: data }, { status: 201 });
-  } catch {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
 }

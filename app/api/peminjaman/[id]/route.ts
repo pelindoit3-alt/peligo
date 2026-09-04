@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '../../../lib/supabaseServer';
+import pool from '../../../lib/db';
 
 // PUT update peminjaman status by id
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,11 +10,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Handle display_order update (for car reordering from superadmin)
     if (display_order !== undefined) {
-      const { error } = await supabaseServer
-        .from('cars')
-        .update({ display_order })
-        .eq('id', id);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      await pool.query('UPDATE cars SET display_order = $1 WHERE id = $2', [display_order, id]);
       return NextResponse.json({ success: true });
     }
 
@@ -23,10 +19,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Status tidak valid' }, { status: 400 });
     }
 
-    const updateData: Record<string, string> = { status };
-    if (notes !== undefined) updateData.notes = notes;
+    const fields: string[] = ['status = $1'];
+    const values: unknown[] = [status];
+    let idx = 2;
 
-    // Automatically record actual completion timestamp when status is set to Selesai
+    if (notes !== undefined) {
+      fields.push(`notes = $${idx}`);
+      values.push(notes);
+      idx++;
+    }
+
     if (status === 'Selesai') {
       const now = new Date();
       const year = now.getFullYear();
@@ -35,30 +37,36 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const hours = String(now.getHours()).padStart(2, '0');
       const mins = String(now.getMinutes()).padStart(2, '0');
 
-      updateData.end_date = `${year}-${month}-${day}`;
-      updateData.end_time = `${hours}:${mins}`;
+      fields.push(`end_date = $${idx}`);
+      values.push(`${year}-${month}-${day}`);
+      idx++;
+
+      fields.push(`end_time = $${idx}`);
+      values.push(`${hours}:${mins}`);
+      idx++;
     }
 
-    const { data, error } = await supabaseServer
-      .from('peminjaman')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE peminjaman SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Peminjaman tidak ditemukan' }, { status: 404 });
+    }
 
-    // Otomatis kembalikan status mobil → Tersedia jika peminjaman Selesai atau Ditolak
+    const pinjam = result.rows[0];
+
     if (status === 'Selesai' || status === 'Ditolak') {
-      const pinjam = data as any;
-      if (pinjam?.car_id) {
-        await supabaseServer.from('cars').update({ status: 'Tersedia' }).eq('id', pinjam.car_id);
-      } else if (pinjam?.plate_number) {
-        await supabaseServer.from('cars').update({ status: 'Tersedia' }).eq('plate_number', pinjam.plate_number);
+      if (pinjam.car_id) {
+        await pool.query('UPDATE cars SET status = $1 WHERE id = $2', ['Tersedia', pinjam.car_id]);
+      } else if (pinjam.plate_number) {
+        await pool.query('UPDATE cars SET status = $1 WHERE plate_number = $2', ['Tersedia', pinjam.plate_number]);
       }
     }
 
-    return NextResponse.json({ peminjaman: data });
+    return NextResponse.json({ peminjaman: pinjam });
   } catch {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
@@ -68,8 +76,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { error } = await supabaseServer.from('peminjaman').delete().eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await pool.query('DELETE FROM peminjaman WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
