@@ -28,8 +28,13 @@ import {
   Sliders,
   Settings,
   Bell,
-  ArrowUpRight
+  ArrowUpRight,
+  LogOut,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
+import { getSession, clearSession } from '../lib/auth';
+import { exportToExcel, exportToPDF } from '../lib/exportUtils';
 
 export interface AdminReservation {
   id: string;
@@ -122,6 +127,19 @@ export default function AdminPage() {
     fetchReservations();
     fetchUsers();
   }, []);
+
+  // Auth guard: redirect if not logged in or not Admin/Superadmin
+  useEffect(() => {
+    const session = getSession();
+    if (!session || (session.role !== 'Admin' && session.role !== 'Superadmin')) {
+      router.replace('/login');
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    clearSession();
+    router.replace('/login');
+  };
 
   const handleApprove = async (id: string) => {
     try {
@@ -264,16 +282,13 @@ export default function AdminPage() {
     },
     {
       icon: (
-        <VscSettingsGear
+        <LogOut
           size={22}
-          className={adminTab === 'pengaturan' ? 'text-blue-600 font-bold' : 'text-slate-800'}
+          className="text-red-600 hover:text-red-700"
         />
       ),
-      label: 'Pengaturan',
-      onClick: () => {
-        setAdminTab('pengaturan');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      label: 'Keluar',
+      onClick: handleLogout
     }
   ];
 
@@ -296,8 +311,15 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Return to Staff portal button */}
-      
+        {/* Action buttons */}
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/20 transition-all cursor-pointer"
+        >
+          <LogOut size={15} />
+          <span>Keluar</span>
+        </button>
       </div>
 
       {/* Alert Notification Toast */}
@@ -544,16 +566,41 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Search */}
-            <div className="relative w-full max-w-md">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari ID, peminjam, mobil, atau tujuan..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-xs"
-              />
+            {/* Search & Export Action Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative w-full max-w-md">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari ID, peminjam, mobil, atau tujuan..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-xs"
+                />
+              </div>
+
+              {/* Export Buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => exportToExcel(archiveList, 'Riwayat_Peminjaman_Admin')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                  title="Export data saat ini ke Microsoft Excel (.xlsx)"
+                >
+                  <FileSpreadsheet size={15} className="text-emerald-600" />
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => exportToPDF(archiveList, 'Riwayat_Peminjaman_Admin', 'Laporan Rekapitulasi Peminjaman Kendaraan Dinas')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                  title="Export data saat ini ke dokumen PDF"
+                >
+                  <FileText size={15} className="text-red-600" />
+                  <span>Export PDF</span>
+                </button>
+              </div>
             </div>
 
             {/* Table */}

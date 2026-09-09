@@ -10,9 +10,20 @@ export interface SessionUser {
 
 const SESSION_KEY = 'pelindo_session';
 
+function setCookie(name: string, value: string, days = 1) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`;
+}
+
 export function saveSession(user: SessionUser): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  const value = JSON.stringify(user);
+  localStorage.setItem(SESSION_KEY, value);
+  setCookie(SESSION_KEY, value);
 }
 
 export function getSession(): SessionUser | null {
@@ -29,4 +40,5 @@ export function getSession(): SessionUser | null {
 export function clearSession(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(SESSION_KEY);
+  deleteCookie(SESSION_KEY);
 }

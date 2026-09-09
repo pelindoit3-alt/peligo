@@ -13,10 +13,12 @@ import {
   Clock,
   MapPin,
   FileText,
+  FileSpreadsheet,
   LogOut,
   User
 } from 'lucide-react';
 import { getSession, clearSession } from '../lib/auth';
+import { exportToExcel, exportToPDF } from '../lib/exportUtils';
 
 export interface RiwayatItem {
   id: string;
@@ -175,8 +177,8 @@ export default function RiwayatPage() {
           ))}
         </div>
 
-        {/* Search Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Search Bar & Export Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -186,6 +188,29 @@ export default function RiwayatPage() {
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-all shadow-xs"
             />
+          </div>
+
+          {/* Export Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => exportToExcel(filteredItems, 'Riwayat_Peminjaman')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+              title="Export riwayat ke Microsoft Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={15} className="text-emerald-600" />
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => exportToPDF(filteredItems, 'Riwayat_Peminjaman', 'Laporan Riwayat Peminjaman Kendaraan Dinas')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+              title="Export riwayat ke dokumen PDF"
+            >
+              <FileText size={15} className="text-red-600" />
+              <span>Export PDF</span>
+            </button>
           </div>
         </div>
 

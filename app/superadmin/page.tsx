@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getSession, clearSession } from '../lib/auth';
 import { INITIAL_CARS, CarData } from '../data/cars';
 import {
   LayoutDashboard,
@@ -33,8 +34,10 @@ import {
   Home,
   Upload,
   ArrowLeft,
-  GripVertical
+  GripVertical,
+  FileText
 } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '../lib/exportUtils';
 
 export interface UserData {
   id: string;
@@ -270,6 +273,19 @@ export default function SuperadminPage() {
     refreshUsers();
     refreshLogs();
   }, []);
+
+  // Auth guard: redirect if not logged in or not Superadmin
+  useEffect(() => {
+    const session = getSession();
+    if (!session || session.role !== 'Superadmin') {
+      router.replace('/login');
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    clearSession();
+    router.replace('/login');
+  };
 
   // Safe state update without crashing on browser localStorage quota limits
   const saveCarsToStorage = (updatedCars: CarData[]) => {
@@ -731,13 +747,14 @@ export default function SuperadminPage() {
             </div>
           </div>
 
-          <Link
-            href="/"
+          <button
+            type="button"
+            onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-300 hover:bg-red-50 text-slate-700 hover:text-red-600 text-xs font-semibold transition-all cursor-pointer bg-white shadow-xs"
           >
             <LogOut size={15} />
-            <span>Keluar ke Home</span>
-          </Link>
+            <span>Keluar</span>
+          </button>
         </div>
       </aside>
 
@@ -1310,7 +1327,7 @@ export default function SuperadminPage() {
         {/* ========================================================================= */}
         {activeMenu === 'history' && (
           <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <FileSpreadsheet size={18} className="text-blue-600" />
@@ -1320,12 +1337,77 @@ export default function SuperadminPage() {
                   Menampilkan log histori lengkap pengajuan dari seluruh pegawai kantor (Supabase Database).
                 </p>
               </div>
-              <button
-                onClick={refreshLogs}
-                className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 text-xs font-bold hover:bg-blue-100 cursor-pointer"
-              >
-                Refresh Data
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const mapped = peminjamanLogs.map((p: any) => ({
+                      id: p.id,
+                      borrowerName: p.borrower_name || '-',
+                      nip: p.nip || '-',
+                      division: p.division || '-',
+                      phone: p.phone || '-',
+                      carName: p.car_name || '-',
+                      plateNumber: p.plate_number || '-',
+                      startDate: p.start_date || '-',
+                      startTime: p.start_time || '-',
+                      endDate: p.end_date || '-',
+                      endTime: p.end_time || '-',
+                      duration: p.duration || '-',
+                      destination: p.destination || '-',
+                      purpose: p.purpose || '-',
+                      driverOption: p.driver_option || 'Saya Sendiri',
+                      status: p.status || '-',
+                      requestDate: p.request_date ? new Date(p.request_date).toLocaleString('id-ID') : '-'
+                    }));
+                    exportToExcel(mapped, 'Global_Audit_Peminjaman_Superadmin');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-all cursor-pointer shadow-2xs"
+                  title="Export seluruh log audit ke Microsoft Excel (.xlsx)"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600" />
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const mapped = peminjamanLogs.map((p: any) => ({
+                      id: p.id,
+                      borrowerName: p.borrower_name || '-',
+                      nip: p.nip || '-',
+                      division: p.division || '-',
+                      phone: p.phone || '-',
+                      carName: p.car_name || '-',
+                      plateNumber: p.plate_number || '-',
+                      startDate: p.start_date || '-',
+                      startTime: p.start_time || '-',
+                      endDate: p.end_date || '-',
+                      endTime: p.end_time || '-',
+                      duration: p.duration || '-',
+                      destination: p.destination || '-',
+                      purpose: p.purpose || '-',
+                      driverOption: p.driver_option || 'Saya Sendiri',
+                      status: p.status || '-',
+                      requestDate: p.request_date ? new Date(p.request_date).toLocaleString('id-ID') : '-'
+                    }));
+                    exportToPDF(mapped, 'Global_Audit_Peminjaman_Superadmin', 'Laporan Global Audit Log Peminjaman Mobil Dinas');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-bold hover:bg-red-100 transition-all cursor-pointer shadow-2xs"
+                  title="Export seluruh log audit ke format PDF"
+                >
+                  <FileText size={14} className="text-red-600" />
+                  <span>Export PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={refreshLogs}
+                  className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 text-xs font-bold hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
+                >
+                  Refresh Data
+                </button>
+              </div>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700 space-y-2">
