@@ -1402,6 +1402,37 @@ export default function SuperadminPage() {
 
                 <button
                   type="button"
+                  onClick={async () => {
+                    if (peminjamanLogs.length === 0) {
+                      showToast('Tidak ada data riwayat peminjaman untuk dihapus', 'danger');
+                      return;
+                    }
+                    if (!confirm('⚠️ PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA riwayat peminjaman mobil dari database?\n\nSemua riwayat peminjaman akan dihapus dan status mobil akan direset ke Tersedia.')) {
+                      return;
+                    }
+                    try {
+                      const res = await fetch('/api/peminjaman', { method: 'DELETE' });
+                      if (res.ok) {
+                        showToast('Seluruh riwayat peminjaman berhasil dibersihkan dari database!');
+                        await refreshLogs();
+                        await refreshCars();
+                      } else {
+                        showToast('Gagal menghapus riwayat peminjaman', 'danger');
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      showToast('Terjadi kesalahan saat menghapus data', 'danger');
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer shadow-2xs"
+                  title="Hapus seluruh log riwayat peminjaman"
+                >
+                  <Trash2 size={14} className="text-rose-600" />
+                  <span>Hapus Riwayat</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={refreshLogs}
                   className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 text-xs font-bold hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
                 >

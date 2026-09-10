@@ -143,3 +143,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
 }
+
+// DELETE clear all peminjaman history or by id
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (id) {
+      await pool.query('DELETE FROM peminjaman WHERE id = $1', [id]);
+      return NextResponse.json({ success: true, message: 'Data riwayat berhasil dihapus' });
+    }
+
+    // Delete all records from peminjaman table
+    await pool.query('DELETE FROM peminjaman');
+    // Restore status of all cars to Tersedia
+    await pool.query("UPDATE cars SET status = 'Tersedia'");
+
+    return NextResponse.json({ success: true, message: 'Seluruh isi riwayat peminjaman berhasil dibersihkan' });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}

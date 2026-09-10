@@ -31,7 +31,8 @@ import {
   ArrowUpRight,
   LogOut,
   FileSpreadsheet,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import { getSession, clearSession } from '../lib/auth';
 import { exportToExcel, exportToPDF } from '../lib/exportUtils';
@@ -207,6 +208,81 @@ export default function AdminPage() {
       setTimeout(() => setAlertMessage(null), 4000);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (reservations.length === 0) {
+      alert('Tidak ada data riwayat peminjaman untuk dihapus.');
+      return;
+    }
+
+    const confirmed = confirm(
+      '⚠️ PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA riwayat peminjaman mobil?\n\nSemua data riwayat akan dibersihkan dan status kendaraan akan dikembalikan ke Tersedia. Tindakan ini tidak dapat dibatalkan.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch('/api/peminjaman', { method: 'DELETE' });
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        setAlertMessage({
+          type: 'danger',
+          text: `Gagal menghapus riwayat: ${json.error || 'Terjadi kesalahan'}`
+        });
+        setTimeout(() => setAlertMessage(null), 4000);
+        return;
+      }
+
+      setReservations([]);
+      if (selectedDetail) setSelectedDetail(null);
+
+      setAlertMessage({
+        type: 'success',
+        text: 'Seluruh isi riwayat peminjaman berhasil dihapus dan dibersihkan!'
+      });
+      setTimeout(() => setAlertMessage(null), 4000);
+    } catch (err) {
+      console.error(err);
+      setAlertMessage({
+        type: 'danger',
+        text: 'Terjadi kesalahan saat menghapus riwayat peminjaman.'
+      });
+      setTimeout(() => setAlertMessage(null), 4000);
+    }
+  };
+
+  const handleDeleteReservation = async (id: string) => {
+    const confirmed = confirm(`Apakah Anda yakin ingin menghapus data reservasi ${id}?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/peminjaman/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        setAlertMessage({
+          type: 'danger',
+          text: `Gagal menghapus data: ${json.error || 'Terjadi kesalahan'}`
+        });
+        setTimeout(() => setAlertMessage(null), 4000);
+        return;
+      }
+
+      setReservations(prev => prev.filter(r => r.id !== id));
+      if (selectedDetail && selectedDetail.id === id) {
+        setSelectedDetail(null);
+      }
+
+      setAlertMessage({
+        type: 'success',
+        text: `Data riwayat peminjaman ${id} berhasil dihapus.`
+      });
+      setTimeout(() => setAlertMessage(null), 4000);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -579,7 +655,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Export Buttons */}
+              {/* Export & Action Buttons */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
@@ -599,6 +675,16 @@ export default function AdminPage() {
                 >
                   <FileText size={15} className="text-red-600" />
                   <span>Export PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                  title="Hapus dan bersihkan seluruh isi riwayat peminjaman"
+                >
+                  <Trash2 size={15} className="text-rose-600" />
+                  <span>Hapus Riwayat</span>
                 </button>
               </div>
             </div>
@@ -658,13 +744,21 @@ export default function AdminPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-4 px-5 text-right">
+                          <td className="py-4 px-5 text-right whitespace-nowrap">
                             <button
                               type="button"
                               onClick={() => setSelectedDetail(r)}
-                              className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                              className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer mr-3"
                             >
                               Detail
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReservation(r.id)}
+                              className="text-xs font-semibold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+                              title="Hapus data riwayat ini"
+                            >
+                              Hapus
                             </button>
                           </td>
                         </tr>
