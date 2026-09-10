@@ -41,9 +41,15 @@ export default function RiwayatPage() {
   const [items, setItems] = useState<RiwayatItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Load all peminjaman history from Supabase API (accessible to all divisions)
+  // Load session user and all peminjaman history from API
   useEffect(() => {
+    const session = getSession();
+    if (session) {
+      setUserRole(session.role);
+    }
+
     async function fetchRiwayat() {
       try {
         const res = await fetch('/api/peminjaman');
@@ -190,28 +196,30 @@ export default function RiwayatPage() {
             />
           </div>
 
-          {/* Export Buttons */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button
-              type="button"
-              onClick={() => exportToExcel(filteredItems, 'Riwayat_Peminjaman')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
-              title="Export riwayat ke Microsoft Excel (.xlsx)"
-            >
-              <FileSpreadsheet size={15} className="text-emerald-600" />
-              <span>Export Excel</span>
-            </button>
+          {/* Export Buttons - Hanya muncul untuk role Admin / Superadmin */}
+          {(userRole === 'Admin' || userRole === 'Superadmin') && (
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => exportToExcel(filteredItems, 'Riwayat_Peminjaman')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                title="Export riwayat ke Microsoft Excel (.xlsx)"
+              >
+                <FileSpreadsheet size={15} className="text-emerald-600" />
+                <span>Export Excel</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => exportToPDF(filteredItems, 'Riwayat_Peminjaman', 'Laporan Riwayat Peminjaman Kendaraan Dinas')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
-              title="Export riwayat ke dokumen PDF"
-            >
-              <FileText size={15} className="text-red-600" />
-              <span>Export PDF</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => exportToPDF(filteredItems, 'Riwayat_Peminjaman', 'Laporan Riwayat Peminjaman Kendaraan Dinas')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                title="Export riwayat ke dokumen PDF"
+              >
+                <FileText size={15} className="text-red-600" />
+                <span>Export PDF</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
